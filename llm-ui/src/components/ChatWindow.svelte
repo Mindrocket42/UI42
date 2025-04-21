@@ -5,10 +5,12 @@
     getOrCreateConversation,
     listMessages,
     appendMessage,
+    updateConversationTitle, // Import updateConversationTitle from db
     type Message
   } from '../lib/db';
   import { settingsStore } from '../lib/settings';
   import { get } from 'svelte/store';
+  import { chatToMarkdown } from '../lib/markdown';
 
   let messages: Message[] = [];
   let input = '';
@@ -100,6 +102,14 @@
     messages = [...messages, userMsg];
     scrollToBottom();
 
+    // Autoname conversation after first prompt if it has a generic/new title
+    if (messages.length === 1) {
+      // Use first 6 words or 40 chars of user prompt as title
+      let autoTitle = content.split(/\s+/).slice(0, 6).join(' ');
+      if (autoTitle.length > 40) autoTitle = autoTitle.slice(0, 40) + '...';
+      await updateConversationTitle(conversationId, autoTitle);
+    }
+
     /* ----- Stream assistant reply ----------------------------------- */
     let assistantContent = '';
     const settings = get(settingsStore);
@@ -132,6 +142,24 @@
 
   let blocked = false;
   $: blocked = !get(settingsStore).providers[get(settingsStore).defaultProvider].key;
+
+  let chatStartedAt: Date | null = null;
+  let conversationTitle: string | null = null;
+
+  $: if (messages.length > 0 && !chatStartedAt) {
+    chatStartedAt = messages[0].createdAt ? new Date(messages[0].createdAt) : new Date();
+  }
+
+  $: if (conversationId) {
+    db.conversations.get(conversationId).then(convo => {
+      conversationTitle = convo?.title || null;
+    });
+  }
+
+  function formatTimestamp(date: Date | null) {
+    if (!date) return '';
+    return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}_${String(date.getHours()).padStart(2,'0')}${String(date.getMinutes()).padStart(2,'0')}`;
+  }
 </script>
 
 <style>
@@ -142,17 +170,47 @@
     max-height: 100dvh;
     font-family: system-ui, sans-serif;
   }
-  .search-box {
-    margin-bottom: 0.5rem;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 1rem;
+  .chat-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    background: linear-gradient(90deg, #30336b 0%, #f0932b 100%);
+    color: #fff;
+    padding: 0.7rem 1.2rem 0.7rem 1.2rem;
+    font-size: 1.07em;
+    font-weight: 600;
+    border-bottom: 1px solid #e0e0e0;
+    min-height: 48px;
+  }
+  .model-name {
+    font-weight: bold;
+    letter-spacing: 0.5px;
+  }
+  .chat-main-row {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    position: relative;
   }
   #msg-box {
     flex: 1 1 auto;
     overflow-y: auto;
     padding: 1rem;
     background: #fafafa;
+    min-width: 0;
+  }
+  .chat-right-zone {
+    width: 48px;
+    min-width: 48px;
+    max-width: 48px;
+    background: #fff;
+    border-left: 1px solid #eee;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding-top: 0.5rem;
+    height: auto;
   }
   .msg {
     max-width: 60ch;
@@ -191,6 +249,7 @@
   .composer button {
     flex: 0 0 auto;
     padding: 0 1rem;
+    min-width: 48px;
   }
   @media (max-width: 600px) {
     .chat-window {
@@ -202,6 +261,11 @@
       font-size: 0.98rem;
       padding: 0.5rem 0.4rem;
     }
+    .chat-right-zone {
+      width: 42px;
+      min-width: 42px;
+      max-width: 42px;
+    }
   }
   .banner {
     color: #e53e3e;
@@ -210,18 +274,34 @@
     border-radius: 4px;
     margin-bottom: 0.5rem;
   }
+  .empty-chat-msg {
+    color: #aaa;
+    text-align: center;
+    margin-top: 2em;
+    font-size: 1.1em;
+  }
 </style>
 
 <div class="chat-window">
-  <!-- Removed the search box from here; now handled in ConversationList -->
-  <div id="msg-box">
-    {#each filteredMessages as m}
-      <div class="msg {m.role}">
-        <pre>{@html highlight(m.content, searchTerm)}</pre>
-      </div>
-    {/each}
+  <div class="chat-header">
+    <span class="model-name">{get(settingsStore).model}</span>
   </div>
-
+  <div class="chat-main-row">
+    <div id="msg-box">
+      {#if filteredMessages.length === 0}
+        <div class="empty-chat-msg">No conversation selected or no messages yet.</div>
+      {:else}
+        {#each filteredMessages as m}
+          <div class="msg {m.role}">
+            <pre>{@html highlight(m.content, searchTerm)}</pre>
+          </div>
+        {/each}
+      {/if}
+    </div>
+    <div class="chat-right-zone">
+      <slot name="settings" />
+    </div>
+  </div>
   <form class="composer" on:submit|preventDefault={sendMessage}>
     {#if blocked}
       <div class="banner">
@@ -234,14 +314,13 @@
       bind:value={input}
       bind:this={textareaElement}
       on:keydown={(e) => {
-        // Optional: Allow sending with Enter, Shift+Enter for newline
         if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault(); // Prevent default newline
+          e.preventDefault();
           sendMessage();
         }
       }}
       disabled={blocked}
     ></textarea>
-    <button type="submit" disabled={!input.trim() || blocked}>Send</button> <!-- Disable send if no input/key -->
+    <button type="submit" disabled={!input.trim() || blocked}>Send</button>
   </form>
 </div>

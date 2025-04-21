@@ -204,6 +204,10 @@ export async function deleteConversation(conversationId: string): Promise<void> 
   console.log(`Deleted conversation ${conversationId} and its messages`);
 }
 
+export async function updateConversationTitle(id: string, title: string): Promise<void> {
+  await db.conversations.update(id, { title, updatedAt: new Date() });
+}
+
 /* ------------------------------------------------------------------ */
 /* Prompt Helper functions                                            */
 /* ------------------------------------------------------------------ */
