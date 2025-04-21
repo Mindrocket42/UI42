@@ -47,11 +47,11 @@
     <button class="hamburger" on:click={() => menuOpen = !menuOpen} aria-label="Open menu">
       <span></span><span></span><span></span>
     </button>
-    <SettingsDrawer bind:open={settingsOpen} />
+    <!-- Removed SettingsDrawer button from the stack -->
   </div>
   {#if menuOpen}
     <nav class="app-menu menu-below-stack">
-      <button class="settings-btn" on:click={() => { settingsOpen = true; menuOpen = false; }}>Settings</button>
+      <button on:click={() => { settingsOpen = true; menuOpen = false; }}>Settings</button>
       <button on:click={() => { promptLibraryOpen = true; menuOpen = false; }}>Prompt Library</button>
       <button on:click={() => { taskPanelOpen = true; menuOpen = false; }}>Task Queue</button>
     </nav>
@@ -68,6 +68,7 @@
   <!-- Drawers/Modals -->
   {#if settingsOpen}
     <div class="drawer-overlay" on:click={() => settingsOpen = false}></div>
+    <aside class="drawer popout"><SettingsDrawer bind:open={settingsOpen} /></aside>
   {/if}
   {#if promptLibraryOpen}
     <div class="drawer-overlay" on:click={() => promptLibraryOpen = false}></div>
