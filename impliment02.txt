@@ -1,0 +1,254 @@
+IMPLEMENTATION PLAN  
+feature: “Big‑AGI‑style Settings Drawer + 4‑provider support”  
+target stack: Svelte + Vite (adapt paths if you use React/Next)
+
+────────────────────────────────────────
+[x] 0 .  PRE‑WORK (≈ 1 h)
+────────────────────────────────────────
+• Update project board: create epic “Settings v1”.  
+• Branch:  `git checkout -b feat/settings-drawer`.  
+• Install helper deps:  
+  ```
+  pnpm add @tabler/icons-svelte       # icons
+  pnpm add clsx                       # tiny class util
+  pnpm add zod                        # settings validation (optional)
+  ```
+
+────────────────────────────────────────
+[x] 1 .  GLOBAL STORE (≈ 1 h)
+────────────────────────────────────────
+FILE src/lib/stores/settings.ts
+```ts
+import { writable } from 'svelte/store';
+
+export type Provider = 'openrouter' | 'openai' | 'anthropic' | 'grok';
+interface ProviderSettings { key: string; baseUrl?: string }
+export interface AppSettings {
+  defaultProvider: Provider;
+  model: string;
+  temperature: number;
+  timeout: number;
+  providers: Record<Provider, ProviderSettings>;
+}
+
+const DEFAULT: AppSettings = {
+  defaultProvider: 'openrouter',
+  model: 'gpt-3.5-turbo',
+  temperature: 0.7,
+  timeout: 30000,
+  providers: {
+    openrouter:  { key: '', baseUrl: 'https://openrouter.ai/api/v1' },
+    openai:      { key: '', baseUrl: 'https://api.openai.com/v1' },
+    anthropic:   { key: '', baseUrl: 'https://api.anthropic.com' },
+    grok:        { key: '', baseUrl: 'https://api.groq.com' }
+  }
+};
+
+function persist(s: AppSettings) {
+  localStorage.setItem('llm-settings', JSON.stringify(s));
+}
+
+function load(): AppSettings {
+  const raw = localStorage.getItem('llm-settings');
+  return raw ? { ...DEFAULT, ...JSON.parse(raw) } : DEFAULT;
+}
+
+function createStore() {
+  const { subscribe, set, update } = writable<AppSettings>(load());
+  return {
+    subscribe,
+    patch: (fn: (s: AppSettings) => void) => update(s => { fn(s); persist(s); return s; }),
+    reset: () => { persist(DEFAULT); set(DEFAULT); }
+  };
+}
+
+export const settingsStore = createStore();
+```
+
+────────────────────────────────────────
+[x] 2 .  SETTINGS DRAWER COMPONENT (≈ 4 h)
+────────────────────────────────────────
+FILE src/components/SettingsDrawer.svelte
+•  Slide‑in drawer pattern (CSS grid / fixed right 0).  
+•  Tabs: Keys | Models | Advanced (simple `bind:group` radio).  
+•  Two‑way bind fields to `$settingsStore` using `settingsStore.patch(...)`.  
+•  `Save & Test` button triggers `testConnection()` for selected provider.
+
+Skeleton:
+```svelte
+<script lang="ts">
+  import { settingsStore, type AppSettings } from '$lib/stores/settings';
+  import { onMount } from 'svelte';
+  import { IconSettings } from '@tabler/icons-svelte';
+  export let open = false;
+  let local: AppSettings;
+
+  const unsub = settingsStore.subscribe(v => local = structuredClone(v));
+  function save() {
+    settingsStore.patch(s => Object.assign(s, local));
+    test();    // immediate test
+  }
+  async function test() { /* call helper, set result */ }
+  onDestroy(unsub);
+</script>
+
+<button class="icon-btn" on:click={() => open = true}><IconSettings size={20}/></button>
+
+{#if open}
+  <aside class="drawer"> …tabs+fields… </aside>
+{/if}
+
+<style>
+  .drawer { position: fixed; right:0; top:0; height:100%; width: min(400px,100%); … }
+</style>
+```
+
+────────────────────────────────────────
+3 .  TEST CONNECTION HELPERS (≈ 2 h)
+────────────────────────────────────────
+FILE src/lib/providerTest.ts
+```ts
+import { AppSettings } from './stores/settings';
+
+export async function testProvider(s: AppSettings): Promise<{ok:boolean; ms?:number; err?:string}> {
+  const p = s.providers[s.defaultProvider];
+  if (!p.key) return { ok:false, err:'No key' };
+  const t0 = performance.now();
+  try {
+    switch (s.defaultProvider) {
+      case 'openrouter':
+      case 'openai':
+        await fetch(p.baseUrl + '/models', {
+          headers: { Authorization:`Bearer ${p.key}` }
+        });
+        break;
+      case 'anthropic':
+        await fetch(p.baseUrl + '/models', {
+          headers: {
+            Authorization:`Bearer ${p.key}`,
+            'anthropic-version':'2023-06-01'
+          }
+        });
+        break;
+      case 'grok':
+        await fetch(p.baseUrl + '/ping', {
+          headers:{ Authorization:`Bearer ${p.key}` }
+        });
+        break;
+    }
+    return { ok:true, ms: Math.round(performance.now()-t0) };
+  } catch(e:any) { return { ok:false, err:e.message }; }
+}
+```
+
+Wire into drawer; show green badge if `ok`, red text otherwise.
+
+────────────────────────────────────────
+4 .  API STREAM WRAPPER (≈ 4 h)
+────────────────────────────────────────
+FILE src/lib/chat/stream.ts
+```ts
+import { get } from 'svelte/store';
+import { settingsStore } from '$lib/stores/settings';
+
+export async function* stream(messages) {
+  const st = get(settingsStore);
+  const prov = st.providers[st.defaultProvider];
+  if (!prov.key) throw new Error('API key missing');
+
+  // --- build per-provider body ---
+  let url='', body={};
+  const headers: Record<string,string> = {
+     'Content-Type':'application/json',
+     Authorization:`Bearer ${prov.key}`
+  };
+
+  switch (st.defaultProvider) {
+    case 'openrouter':
+      headers['HTTP-Referer']='https://your-site.example';
+      headers['X-Title']='My Chat UI';
+      url = prov.baseUrl + '/chat/completions';
+      body = { model: st.model, temperature: st.temperature, stream:true, messages };
+      break;
+    case 'openai':
+      url = prov.baseUrl + '/chat/completions';
+      body = { model: st.model, temperature: st.temperature, stream:true, messages };
+      break;
+    case 'anthropic':
+      headers['anthropic-version']='2023-06-01';
+      url = prov.baseUrl + '/messages';
+      body = { model: st.model, max_tokens:1024, stream:true,
+               messages: messages.map(m => ({role:m.role==='assistant'?'assistant':'user',content:m.content})) };
+      break;
+    case 'grok':
+      url = prov.baseUrl + '/chat';
+      body = { model: st.model, stream:true, messages };
+      break;
+  }
+
+  const res = await fetch(url,{method:'POST',headers,body:JSON.stringify(body)});
+  const reader = res.body!.getReader();
+  const dec = new TextDecoder();
+
+  let buf='';
+  for (;;) {
+    const {value,done}=await reader.read(); if(done) break;
+    buf += dec.decode(value,{stream:true});
+    // split protocol‑specific chunks:
+    const parts = buf.split('\n\n'); buf = parts.pop()!;
+    for (const part of parts) {
+      if(!part.trim()) continue;
+      if (part.startsWith('data:')) {
+        const json = JSON.parse(part.replace('data:',''));
+        const delta = st.defaultProvider==='anthropic'
+            ? json.delta?.text ?? ''
+            : json.choices?.[0]?.delta?.content ?? '';
+        if(delta) yield delta;
+      }
+    }
+  }
+}
+```
+
+Integrate into your existing ChatWindow: replace previous `streamChat` call.
+
+────────────────────────────────────────
+5 .  UI GUARDS (≈ 1 h)
+────────────────────────────────────────
+• In Chat compose component:
+```svelte
+$: blocked = !$settingsStore.providers[$settingsStore.defaultProvider].key;
+```
+Disable textarea & show banner when `blocked`.
+
+────────────────────────────────────────
+6 .  THEMING / CSS POLISH (≈ 2 h)
+────────────────────────────────────────
+• Use CSS variables: `--bg-1`, `--bg-2`, `--text-1`, etc.  
+• Media query `@media (prefers-color-scheme: dark)` to flip palettes.  
+• Copy shadow & rounded‑corner values from Big‑AGI dev tools for visual parity.
+
+────────────────────────────────────────
+7 .  QA & REGRESSION (≈ 3 h)
+────────────────────────────────────────
+✓  paste each provider’s key (use free / trial keys) → pass test.  
+✓  key removal disables app.  
+✓  reload persists.  
+✓  invalid key surfaces error text.  
+✓  Gzip bundle size check (`vite build --report`): remains < 1.2 MB.  
+✓  Mobile view drawer 100 vh scroll.
+
+────────────────────────────────────────
+8 .  DOCS & MERGE (≈ 1 h)
+────────────────────────────────────────
+• Update README “Quick Start”:  
+  1. `npm run dev`  
+  2. click ⚙️, paste key, choose provider.  
+• Squash & merge PR into main; tag `v0.2-settings`.
+
+────────────────────────────────────────
+ESTIMATED EFFORT
+────────────────────────────────────────
+Total ≈ 18 developer‑hours (~2–3 working days).
+
+DONE – you now have a Big‑AGI‑style settings experience with multi‑provider support; the rest of the feature roadmap (branch, export, etc.) can build on this stable foundation.

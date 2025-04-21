@@ -1,0 +1,190 @@
+PRODUCT REQUIREMENTS DOCUMENT (PRD)  
+Project: “Single‑User, Branchable LLM Chat UI with 1‑Click Markdown Export”  
+Version: v0.9 (2024‑06‑XX)  
+Owner: <you>
+
+────────────────────────────────────────
+1. Problem Statement
+────────────────────────────────────────
+Current web UIs (OpenRouter, ChatGPT, etc.) are adequate for casual chat but fail knowledge‑management basics: branching, clean export, prompt re‑use, and lightweight agent tasks. Knowledge workers must manually copy/paste or run scripts to move chats into systems such as Obsidian.
+
+────────────────────────────────────────
+2. Goals & Success Metrics
+────────────────────────────────────────
+G1. Single‑click Markdown export of any conversation → Obsidian‑ready.  
+G2. Branch/fork any conversation or individual assistant reply.  
+G3. Built‑in prompt library with quick‑insert.  
+G4. “Task‑Queue” panel that runs baby‑agi‑lite loops in‑browser.  
+G5. 100 % front‑end → runs from static hosting or `file:///`, no server.  
+G6. Zero setup for end‑user beyond pasting an API key.
+
+Success metrics (first 30 days after launch):  
+• ≥ 90 % of beta testers rate Markdown export as “clean/usably formatted”.  
+• ≤ 2 min median time from git clone to first successful chat.  
+• ≥ 50 branch operations executed by testers (the feature is discoverable & useful).  
+
+────────────────────────────────────────
+3. Target Users
+────────────────────────────────────────
+• Knowledge workers who already store notes in Obsidian/Foam.  
+• Indie developers who want an easily deployable LLM front‑end.  
+• Power users who prefer owning their data (local IndexedDB / manual sync).
+
+────────────────────────────────────────
+4. Functional Requirements
+────────────────────────────────────────
+F1. Chat Interface  
+    • Streaming assistant responses.  
+    • Supports system, user, assistant roles.  
+
+F2. Conversation Persistence  
+    • IndexedDB (Dexie.js) schema: conversations, messages.  
+    • Auto‑save on every turn.  
+
+F3. Branching  
+    • Button “Branch from here” on each assistant message.  
+    • New conversation inherits history up to that turn.  
+
+F4. Export  
+    • “Export .md” on conversation.  
+    • Markdown must render identically in Obsidian default theme.  
+
+F5. Prompt Library  
+    • Left‑sidebar drawer “Prompts”.  
+    • CRUD operations on prompts (stored same DB).  
+    • Hot‑key or dropdown to insert into compose box.  
+
+F6. Task Queue (“baby‑agi‑lite”)  
+    • Panel shows pending & completed tasks.  
+    • User can enqueue text tasks.  
+    • Agent loop picks first task, calls LLM with system prompt template, appends result as assistant message, optionally adds new tasks.  
+
+F7. Search  
+    • Simple keyword search across messages.  
+    • Highlight matches inside chat.  
+
+F8. Settings  
+    • API key storage (localStorage).  
+    • Model picker (dropdown with custom text).  
+    • “Export All” backup → ZIP of JSON + Markdown.  
+
+────────────────────────────────────────
+5. Non‑Functional Requirements
+────────────────────────────────────────
+N1. Works offline after first load (PWAs allowed but not mandatory).  
+N2. Browser support: latest Chrome, Edge, Firefox, Safari.  
+N3. Bundle ≤ 1.2 MB gzipped for first paint.  
+N4. All data local; no external telemetry.  
+
+────────────────────────────────────────
+6. Assumptions & Out of Scope
+────────────────────────────────────────
+• Team sync, multi‑user auth, RBAC: OUT.  
+• Cloud database, serverless functions: OUT (v1).  
+• Mobile‑first polishing: Nice‑to‑have, not blocker.  
+
+────────────────────────────────────────
+7. Open Questions
+────────────────────────────────────────
+Q1. Which agent prompt template for baby‑agi‑lite?  
+Q2. Include Claude & Groq endpoints or leave extensibility hooks only?  
+
+────────────────────────────────────────
+IMPLEMENTATION PLAN (for CursorAI / Claude, etc.)
+────────────────────────────────────────
+Phase 0  –  Project Bootstrap (0.5 day)  
+0.1 `pnpm create vite@latest llm-ui --template svelte-ts`  
+0.2 Add Prettier + ESLint + git hooks.  
+0.3 Commit empty repo to GitHub.
+
+Phase 1  –  Core Chat MVP (1.5 days)  
+1.1 Component: `ChatWindow.svelte` with message list + textarea.  
+1.2 Lib: `chatApi.ts` (`fetch` + streaming reader).  
+1.3 Dexie schema + `db.ts`.  
+1.4 Persist & reload conversations.  
+ACCEPTANCE: can reload page and continue chat.
+
+Phase 2  –  Branching + Sidebars (1 day)  
+2.1 Sidebar `ConversationList.svelte` with New / Delete / Branch / Export.  
+2.2 Implement branch copy in Dexie.  
+ACCEPTANCE: new convo appears, history truncated correctly.
+
+Phase 3  –  Markdown Export (0.5 day)  
+3.1 `markdown.ts` converter (user/assistant headers, fenced code blocks).  
+3.2 FileSaver.js to trigger download.  
+ACCEPTANCE: Imported file in Obsidian shows correct headings & code blocks.
+
+Phase 4  –  Prompt Library (0.5 day)  
+4.1 Table `prompts` in Dexie.  
+4.2 UI CRUD + insert shortcut.  
+ACCEPTANCE: prompt insert fills compose box.
+
+Phase 5  –  Task Queue / Mini‑Agent (1 day)  
+5.1 Dexie table `tasks`.  
+5.2 `babyAgi.ts` loop with `setTimeout`.  
+5.3 UI `TaskPanel.svelte`.  
+ACCEPTANCE: adding a task produces autonomous assistant reply.
+
+Phase 6  –  Search & Polish (1 day)  
+6.1 Build simple `LIKE` search on messages table.  
+6.2 Highlight terms in chat.  
+6.3 Bundle size audit, responsive tweaks.
+
+Phase 7  –  Packaging & Deployment (0.5 day)  
+7.1 `npm run build`, verify `dist/` works with `serve`.  
+7.2 `vercel --prod` script in README.  
+7.3 Create GitHub Releases & zip artefact.
+
+Total time: ~6 developer‑days.
+
+────────────────────────────────────────
+TASK BREAKDOWN FOR AI‑PAIRING TOOLS
+────────────────────────────────────────
+• /src/lib/chatApi.ts  
+  – write `export async function* streamChat(apiKey, messages, model)`.
+
+• /src/lib/db.ts  
+  – Dexie schema + helper `getConversation(id)`.
+
+• /src/components/ConversationList.svelte  
+  – list, context‑menu, branch handler.
+
+• /src/components/ExportButton.svelte  
+  – depends on `chatToMarkdown()` util.
+
+• /src/lib/markdown.ts  
+  – implement `chatToMarkdown(messages: Message[]): string`.
+
+• /src/lib/babyAgi.ts  
+  – `startAgent(queue, addMessage)` with recursion.
+
+• /src/routes/+layout.svelte  
+  – provide global store (selectedConversation, apiKey, model).
+
+────────────────────────────────────────
+MILESTONES & DELIVERABLES
+────────────────────────────────────────
+M1 – End of Day 2: Chat works, reload‑safe.  
+M2 – End of Day 3: Branch + Export.  
+M3 – End of Day 4: Prompt library stable.  
+M4 – End of Day 5: Agent tasks demo.  
+M5 – End of Day 6: Public static build deployed on Vercel.
+
+────────────────────────────────────────
+HOW TO USE WITH CURSOR AI / CLINE
+────────────────────────────────────────
+1. Feed each Phase task list as a prompt:  
+   “Create file `src/lib/chatApi.ts` with a streaming generator that…”.  
+2. After code generation, run `pnpm dev` inside Cursor’s terminal pane; let the AI fix TS errors iteratively.  
+3. For UI, paste Svelte component skeleton and ask Cursor to flesh out styling.  
+4. Use Cline’s “Explain selection” for any generated logic you’re unsure of.  
+5. Run `pnpm test` after each phase (add Vitest stubs) and ask the AI to satisfy failing tests.
+
+────────────────────────────────────────
+APPENDIX: ENV VARS & DEFAULTS
+────────────────────────────────────────
+`VITE_DEFAULT_MODEL = gpt-3.5-turbo`  
+`VITE_DEFAULT_TEMPERATURE = 0.7`
+
+────────────────────────────────────────
+END OF DOCUMENT

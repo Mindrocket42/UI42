@@ -1,0 +1,133 @@
+Below is a focused PRD + implementation plan whose only scope is
+
+
+adding a Settings page that feels and behaves like Big‑AGI’s panel big-agi.com,
+
+wiring that page so the rest of your code can talk to four providers:
+• OpenRouter
+• OpenAI
+• Anthropic (Claude)
+• Grok (xAI).
+
+Nothing else (branching, export, agents) is touched here.
+
+────────────────────────────────────────
+PRODUCT REQUIREMENTS (Settings v1)
+────────────────────────────────────────
+P‑0  Goal
+
+A single modal / drawer reachable from a ⚙️ icon that lets the user:
+
+• Paste or reset multiple API keys.
+
+• Pick a default provider + model.
+
+• Override base‑URL when needed.
+
+• Test the connection and persist everything locally.
+
+• Close the modal and start chatting immediately.
+
+P‑1  Success criteria
+
+• “Save & Test” succeeds for any of the four providers when a valid key is given.
+
+• Switching providers updates the main chat header in ≤ 200 ms (no reload).
+
+• No key = the compose box is disabled and a red banner says “Add an API key”.
+
+────────────────────────────────────────
+UX SPEC  (visually matches Big‑AGI)
+────────────────────────────────────────
+[x]Right‑side drawer slides over content (40 % viewport width on desktop, full‑screen on mobile).
+
+[M] Tabs across the top: Keys, Models, Advanced.
+
+[x] Primary button “Save & Test” bottom‑right (sticky).
+
+[x]When “Test” runs, show green latency chip or red error text inline.
+
+• Light / dark themes follow OS preference (CSS variables only).
+
+Fields
+Keys tab
+
+[x] OpenRouter API key (text‑password)
+
+[x] OpenAI API key
+
+[x] Anthropic API key
+
+[x] Grok API key
+
+Models tab
+
+[x] Radio group “Default Provider” (4 options)
+
+[x] Dynamic Model dropdown (fetched live from the chosen provider if endpoint exists, else manual entry)
+
+[x] Temperature slider (0‑2)
+
+Advanced tab
+
+[ ] Base URL override (visible only for Custom / self‑hosted)
+
+[x] Request timeout (ms) spinner
+
+[ ] “Clear local data” danger button
+
+────────────────────────────────────────
+DATA MODEL  (Svelte Store example)
+────────────────────────────────────────
+export interface ProviderSettings {
+key: string;
+baseUrl?: string;
+}
+
+export interface AppSettings {
+defaultProvider: 'openrouter' | 'openai' | 'anthropic' | 'grok';
+model: string;
+temperature: number;
+timeout: number;
+providers: {
+openrouter: ProviderSettings;
+openai: ProviderSettings;
+anthropic: ProviderSettings;
+grok: ProviderSettings;
+};
+}
+
+Persist to localStorage at every mutation. Dexie not required.
+
+────────────────────────────────────────
+API ABSTRACTION LAYER
+────────────────────────────────────────
+FILE src/lib/providers.ts
+
+export async function* streamChat(
+settings: AppSettings,
+messages: { role: string; content: string }[]
+) {
+const p = settings.providers[settings.defaultProvider];
+const base = p.baseUrl || DEFAULT_BASE[settings.defaultProvider];
+const headers: Record<string, string> = {
+'Content-Type': 'application/json',
+Authorization: Bearer ${p.key}
+};
+
+switch (settings.defaultProvider) {
+case 'openrouter':
+headers['HTTP-Referer'] = 'https://your‑site.example';
+headers['X-Title'] = 'My Chat App';
+// falls through to OpenAI‑compatible path
+case 'openai':
+return streamOpenAI(base + '/chat/completions', headers, settings, messages);
+case 'anthropic':
+headers['anthropic-version'] = '2023-06-01';
+return streamAnthropic(base + '/messages', headers, settings, messages);
+case 'grok':
+return streamGrok(base + '/chat', headers, settings, messages);
+}
+}
+
+Each streamX contains provider‑specific body shape and SSE/JSON‑chunk parsing.
