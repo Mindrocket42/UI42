@@ -43,12 +43,15 @@
 
 <main class="app-layout">
   <!-- Hamburger menu -->
-  <button class="hamburger" on:click={() => menuOpen = !menuOpen} aria-label="Open menu">
-    <span></span><span></span><span></span>
-  </button>
+  <div class="menu-settings-stack">
+    <button class="hamburger" on:click={() => menuOpen = !menuOpen} aria-label="Open menu">
+      <span></span><span></span><span></span>
+    </button>
+    <SettingsDrawer bind:open={settingsOpen} />
+  </div>
   {#if menuOpen}
-    <nav class="app-menu">
-      <button on:click={() => { settingsOpen = true; menuOpen = false; }}>Settings</button>
+    <nav class="app-menu menu-below-stack">
+      <button class="settings-btn" on:click={() => { settingsOpen = true; menuOpen = false; }}>Settings</button>
       <button on:click={() => { promptLibraryOpen = true; menuOpen = false; }}>Prompt Library</button>
       <button on:click={() => { taskPanelOpen = true; menuOpen = false; }}>Task Queue</button>
     </nav>
@@ -63,7 +66,6 @@
   </section>
 
   <!-- Drawers/Modals -->
-  <SettingsDrawer bind:open={settingsOpen} />
   {#if settingsOpen}
     <div class="drawer-overlay" on:click={() => settingsOpen = false}></div>
   {/if}
@@ -190,4 +192,24 @@
   }
   /* Hide old settings-fab and sidebar prompts/tasks */
   .settings-fab, .sidebar.prompts, .sidebar.tasks { display: none !important; }
+  .menu-settings-stack {
+    position: absolute;
+    top: 18px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    z-index: 1300;
+    gap: 8px;
+  }
+  .settings-btn {
+    margin-top: 8px;
+  }
+  .app-menu.menu-below-stack {
+    top: 110px;
+    right: 24px;
+    left: unset;
+    position: absolute;
+    z-index: 1250;
+  }
 </style>

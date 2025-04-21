@@ -213,13 +213,7 @@
 </style>
 
 <div class="chat-window">
-  <input
-    class="search-box"
-    type="text"
-    placeholder="Search messages…"
-    bind:value={searchTerm}
-    style="margin: 0.5rem 0; padding: 0.5rem; width: 100%; box-sizing: border-box;"
-  />
+  <!-- Removed the search box from here; now handled in ConversationList -->
   <div id="msg-box">
     {#each filteredMessages as m}
       <div class="msg {m.role}">
@@ -231,7 +225,7 @@
   <form class="composer" on:submit|preventDefault={sendMessage}>
     {#if blocked}
       <div class="banner">
-        Add an API key
+        <!-- Removed redundant API key prompt -->
       </div>
     {/if}
     <textarea

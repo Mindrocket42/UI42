@@ -50,7 +50,7 @@
   onDestroy(unsub);
 </script>
 
-<button class="icon-btn" on:click={() => open = true} title="Settings">
+<button class="icon-btn settings-btn" on:click={() => open = true} title="Settings">
   <svg width="20" height="20" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8v4l3 3" stroke="currentColor" stroke-width="2" fill="none"/></svg>
 </button>
 
@@ -147,6 +147,23 @@ label { display: flex; flex-direction: column; gap: 0.25rem; }
 .model-loading {
   color: #888;
   margin-bottom: 0.5rem;
+}
+.settings-btn {
+  display: block;
+  margin: 18px auto 0 auto;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 8px;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+.settings-btn svg {
+  width: 28px;
+  height: 28px;
+  display: block;
+  margin: auto;
 }
 @media (max-width: 600px) {
   .drawer { width: 100vw; }

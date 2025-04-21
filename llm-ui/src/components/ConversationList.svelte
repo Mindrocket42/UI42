@@ -22,6 +22,8 @@
 
   const dispatch = createEventDispatcher<{ selectconversation: { id: string | null } }>(); // Allow null ID dispatch
 
+  let searchTerm = ''; // Add search term variable
+
   onMount(async () => {
     // Load conversations from Dexie when the component mounts
     await loadConversations();
@@ -105,6 +107,13 @@
   <button on:click={createNewConversation} class="new-convo-btn">
     + New Conversation
   </button>
+  <input
+    class="search-box"
+    type="text"
+    placeholder="Search messages…"
+    bind:value={searchTerm}
+    style="margin-bottom: 10px; padding: 0.5rem; width: 100%; box-sizing: border-box;"
+  />
   <ul class="conversation-list">
     {#each $conversations as convo (convo.id)}
       <li
