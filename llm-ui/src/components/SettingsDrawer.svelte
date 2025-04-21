@@ -104,12 +104,12 @@
         <label>Grok Base URL <input type="text" bind:value={local.providers.grok.baseUrl}/></label>
       {/if}
       <div class="actions">
-        <button type="submit" class="save-test-btn">Save &amp; Test</button>
+        <button class="save-test-btn" type="submit">Save & Test</button>
         {#if testResult}
           {#if testResult.ok}
-            <span class="latency-chip green">{testResult.ms} ms</span>
+            <span class="latency-chip green">Tested {local.defaultProvider}: Success ({testResult.ms}ms)</span>
           {:else}
-            <span class="error">{testResult.err}</span>
+            <span class="error">Tested {local.defaultProvider}: {testResult.err}</span>
           {/if}
         {/if}
       </div>
