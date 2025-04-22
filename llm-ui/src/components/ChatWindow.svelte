@@ -10,7 +10,7 @@
   } from '../lib/db';
   import { settingsStore } from '../lib/settings';
   import { get } from 'svelte/store';
-  import { chatToMarkdown } from '../lib/markdown';
+  import { chatToMarkdown, messageToMarkdown } from '../lib/markdown';
 
   let messages: Message[] = [];
   let input = '';
@@ -160,6 +160,34 @@
     if (!date) return '';
     return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}_${String(date.getHours()).padStart(2,'0')}${String(date.getMinutes()).padStart(2,'0')}`;
   }
+
+  // Functions for copying to clipboard in markdown format
+  function copyMessageAsMarkdown(message: Message) {
+    const model = get(settingsStore).model;
+    const markdown = messageToMarkdown(message.role, message.content, model);
+    navigator.clipboard.writeText(markdown)
+      .then(() => {
+        // Could show a brief toast notification here
+        console.log('Message copied to clipboard as markdown');
+      })
+      .catch(err => {
+        console.error('Failed to copy message:', err);
+      });
+  }
+
+  function copyAllAsMarkdown() {
+    if (filteredMessages.length === 0) return;
+    
+    const model = get(settingsStore).model;
+    const markdown = chatToMarkdown(filteredMessages, model);
+    navigator.clipboard.writeText(markdown)
+      .then(() => {
+        console.log('All messages copied to clipboard as markdown');
+      })
+      .catch(err => {
+        console.error('Failed to copy messages:', err);
+      });
+  }
 </script>
 
 <style>
@@ -280,6 +308,66 @@
     margin-top: 2em;
     font-size: 1.1em;
   }
+  .role-prefix {
+    font-weight: 600;
+    letter-spacing: 0.1px;
+    user-select: text;
+  }
+  
+  .user-role {
+    color: #0066cc;
+  }
+  
+  .assistant-role {
+    color: #6a329f;
+  }
+  
+  .msg-role-label {
+    font-size: 0.92em;
+    margin-bottom: 0.2em;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .copy-msg-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    opacity: 0.5;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #555;
+    transition: opacity 0.2s;
+  }
+
+  .copy-msg-btn:hover {
+    opacity: 1;
+  }
+
+  .chat-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .copy-all-btn {
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .copy-all-btn:hover {
+    background: #e0e0e0;
+  }
 </style>
 
 <div class="chat-window">
@@ -293,9 +381,31 @@
       {:else}
         {#each filteredMessages as m}
           <div class="msg {m.role}">
-            <pre>{@html highlight(m.content, searchTerm)}</pre>
+            <div class="msg-role-label">
+              {#if m.role === 'user'}
+                <span class="role-prefix user-role">User</span>
+              {:else}
+                <span class="role-prefix assistant-role">Assistant - {get(settingsStore).model}</span>
+              {/if}
+              <button 
+                class="copy-msg-btn" 
+                title="Copy as markdown" 
+                on:click={() => copyMessageAsMarkdown(m)}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </button>
+            </div>
+            <pre class="msg-content">{@html highlight(m.content, searchTerm)}</pre>
           </div>
         {/each}
+        <div class="chat-actions">
+          <button class="copy-all-btn" on:click={copyAllAsMarkdown}>
+            Copy All as Markdown
+          </button>
+        </div>
       {/if}
     </div>
     <div class="chat-right-zone">
