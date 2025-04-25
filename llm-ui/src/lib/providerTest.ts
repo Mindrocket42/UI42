@@ -12,8 +12,8 @@ export async function testProvider(s: AppSettings): Promise<{ok:boolean; ms?:num
         headers = {
           'Authorization': `Bearer ${p.key}`,
           'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://your-site.example',
-          'X-Title': 'My Chat App',
+          'HTTP-Referer': 'https://mindrocket.consulting',
+          'X-Title': 'UI42'
         };
         body = { model: s.model, messages: [{role:'user', content:'ping'}], stream: false };
         break;

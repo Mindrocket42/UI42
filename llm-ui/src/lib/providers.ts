@@ -30,8 +30,8 @@ export async function* streamChat(
 
   switch (settings.defaultProvider) {
     case 'openrouter':
-      headers['HTTP-Referer'] = 'https://your-site.example';
-      headers['X-Title'] = 'My Chat App';
+      headers['HTTP-Referer'] = 'https://mindrocket.consulting';
+      headers['X-Title'] = 'UI42';
       // falls through to OpenAI-compatible path
     case 'openai':
       // Use OpenAI-compatible streaming
@@ -40,7 +40,8 @@ export async function* streamChat(
         messages,
         settings.model,
         signal,
-        base + '/chat/completions'
+        base + '/chat/completions',
+        headers
       );
       break;
     case 'anthropic':

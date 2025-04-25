@@ -13,14 +13,19 @@ export async function* streamChat(
   messages: Message[],
   model = 'gpt-3.5-turbo',
   signal?: AbortSignal,
-  baseUrl = 'https://api.openai.com/v1/chat/completions'
+  baseUrl = 'https://api.openai.com/v1/chat/completions',
+  headersOverride?: Record<string, string>
 ): AsyncGenerator<string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${apiKey}`
+  };
+  if (headersOverride) {
+    Object.assign(headers, headersOverride);
+  }
   const res = await fetch(baseUrl, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`
-    },
+    headers,
     body: JSON.stringify({
       model,
       messages: messages.map((m) => ({ role: m.role, content: m.content })),
