@@ -5,10 +5,12 @@
     getOrCreateConversation,
     listMessages,
     appendMessage,
-    type Message
+    type Message,
+    db // Import db instance
   } from '../lib/db';
   import { settingsStore } from '../lib/settings';
   import { get } from 'svelte/store';
+  import { chatToMarkdown } from '../lib/markdown';
 
   let messages: Message[] = [];
   let input = '';
@@ -94,11 +96,22 @@
       conversationId,
       role: 'user',
       content,
-      createdAt: new Date()
+      createdAt: new Date(),
+      model: get(settingsStore).model // Store the model used for this message
     };
     await appendMessage(userMsg);
     messages = [...messages, userMsg];
     scrollToBottom();
+
+    // Autoname conversation after first prompt if it has a generic/new title
+    if (messages.length === 1) {
+      // Use first 6 words or 40 chars of user prompt as title
+      let autoTitle = content.split(/\s+/).slice(0, 6).join(' ');
+      if (autoTitle.length > 40) autoTitle = autoTitle.slice(0, 40) + '...';
+      // Update the conversation title directly using Dexie
+      const now = new Date();
+      await db.conversations.update(conversationId, { title: autoTitle, updatedAt: now });
+    }
 
     /* ----- Stream assistant reply ----------------------------------- */
     let assistantContent = '';
@@ -111,13 +124,10 @@
         conversationId,
         role: 'assistant',
         content: assistantContent,
-        createdAt: new Date()
+        createdAt: new Date(),
+        model: settings.model // Store the model used for this assistant reply
       };
-      if (messages[messages.length - 1]?.role === 'assistant') {
-        messages[messages.length - 1] = draft;
-      } else {
-        messages = [...messages, draft];
-      }
+      // Optionally update UI with draft
       scrollToBottom();
     }
 
@@ -126,12 +136,33 @@
       conversationId,
       role: 'assistant',
       content: assistantContent,
-      createdAt: new Date()
+      createdAt: new Date(),
+      model: settings.model // Store the model used for this assistant reply
     });
+    messages = await listMessages(conversationId);
+    scrollToBottom();
   }
 
   let blocked = false;
   $: blocked = !get(settingsStore).providers[get(settingsStore).defaultProvider].key;
+
+  // Add the missing function for copying a single message as markdown
+  function copyMessageAsMarkdown(message: Message) {
+    // Inline conversion to markdown for a single message
+    let md = '';
+    if (message.role === 'user') {
+      md = `## User\n\n${message.content}\n`;
+    } else if (message.role === 'assistant') {
+      md = `## Assistant\n\n${message.content}\n`;
+    }
+    navigator.clipboard.writeText(md)
+      .then(() => {
+        console.log('Message copied to clipboard as markdown');
+      })
+      .catch(err => {
+        console.error('Failed to copy message:', err);
+      });
+  }
 </script>
 
 <style>
@@ -170,12 +201,6 @@
     margin-right: auto;
     background: #e9e9e9;
   }
-  mark {
-    background: #ffe066;
-    color: inherit;
-    padding: 0 2px;
-    border-radius: 2px;
-  }
   .composer {
     display: flex;
     gap: 0.5rem;
@@ -210,20 +235,67 @@
     border-radius: 4px;
     margin-bottom: 0.5rem;
   }
+  .chat-header {
+    padding: 0.5rem;
+    border-bottom: 1px solid #ddd;
+  }
+  .model-name {
+    font-size: 0.9rem;
+    color: #666;
+  }
+  .msg-role-label {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.2rem;
+  }
+  .role-prefix {
+    font-size: 0.9rem;
+    color: #666;
+  }
+  .user-role {
+    color: #337ab7;
+  }
+  .assistant-role {
+    color: #5cb85c;
+  }
+  .copy-msg-btn {
+    margin-left: 0.5rem;
+    padding: 0.2rem 0.4rem;
+    border: none;
+    border-radius: 4px;
+    background: #f7f7f7;
+    cursor: pointer;
+  }
+  .copy-msg-btn:hover {
+    background: #e7e7e7;
+  }
 </style>
 
 <div class="chat-window">
-  <input
-    class="search-box"
-    type="text"
-    placeholder="Search messages…"
-    bind:value={searchTerm}
-    style="margin: 0.5rem 0; padding: 0.5rem; width: 100%; box-sizing: border-box;"
-  />
+  <div class="chat-header">
+  </div>
   <div id="msg-box">
     {#each filteredMessages as m}
       <div class="msg {m.role}">
-        <pre>{@html highlight(m.content, searchTerm)}</pre>
+        <div class="msg-role-label">
+          {#if m.role === 'user'}
+            <span class="role-prefix user-role">User</span>
+          {:else}
+            <span class="role-prefix assistant-role">Assistant - {m.model || get(settingsStore).model}</span>
+          {/if}
+          <button 
+            class="copy-msg-btn" 
+            title="Copy as markdown" 
+            aria-label="Copy message as markdown"
+            on:click={() => copyMessageAsMarkdown(m)}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </button>
+        </div>
+        <pre class="msg-content">{@html highlight(m.content, searchTerm)}</pre>
       </div>
     {/each}
   </div>

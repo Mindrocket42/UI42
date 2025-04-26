@@ -254,4 +254,12 @@
      color: #000;
    }
 
+  /* Remove blue highlight from model/searched messages */
+  .model-message, .search-highlight {
+    background: none !important;
+    color: inherit !important;
+    font-weight: normal !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
 </style>

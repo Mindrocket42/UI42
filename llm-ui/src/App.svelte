@@ -3,13 +3,12 @@
   import ChatWindow from './components/ChatWindow.svelte';
   import ConversationList from './components/ConversationList.svelte';
   import PromptLibrary from './components/PromptLibrary.svelte';
-  import TaskPanel from './components/TaskPanel.svelte'; // Import TaskPanel
-  import { getOrCreateConversation, type Conversation } from '$lib/db'; // Import db helpers
-  import SettingsDrawer from './components/SettingsDrawer.svelte';
+  import TaskPanel from './components/TaskPanel.svelte';
+  import { getOrCreateConversation, type Conversation } from './lib/db';
+  import TopSettingsBar from './components/TopSettingsBar.svelte';
 
   let promptToInsert: string | null = null;
-  let selectedConversationId: string | null = null; // State for selected conversation
-  let settingsOpen = false;
+  let selectedConversationId: string | null = null;
   let menuOpen = false;
   let promptLibraryOpen = false;
   let taskPanelOpen = false;
@@ -30,49 +29,42 @@
   }
 
   // Handler for when conversation list selects a new conversation
-  // Note: ConversationList needs to be updated to dispatch this event
-  // and potentially accept selectedId via bind:
-  function handleSelectConversation(event: CustomEvent<{ id: string }>) {
+  function handleSelectConversation(event: CustomEvent<{ id: string | null }>) {
     selectedConversationId = event.detail.id;
     console.log("App selected conversation:", selectedConversationId);
-    // Potentially stop the agent if the conversation changes? Or let TaskPanel handle it?
-    // For now, TaskPanel will use the ID passed via prop.
   }
-
 </script>
 
 <main class="app-layout">
-  <!-- Hamburger menu -->
-  <button class="hamburger" on:click={() => menuOpen = !menuOpen} aria-label="Open menu">
-    <span></span><span></span><span></span>
-  </button>
-  {#if menuOpen}
-    <nav class="app-menu">
-      <button on:click={() => { settingsOpen = true; menuOpen = false; }}>Settings</button>
-      <button on:click={() => { promptLibraryOpen = true; menuOpen = false; }}>Prompt Library</button>
-      <button on:click={() => { taskPanelOpen = true; menuOpen = false; }}>Task Queue</button>
-    </nav>
-  {/if}
-
-  <!-- Main chat and conversations -->
-  <aside class="sidebar conversations">
-    <ConversationList currentSelectedId={selectedConversationId} on:selectconversation={handleSelectConversation} />
-  </aside>
-  <section class="main-chat">
-    <ChatWindow bind:insertContent={promptToInsert} conversationId={selectedConversationId} />
-  </section>
+  <TopSettingsBar />
+  <div class="main-content">
+    <!-- Hamburger menu -->
+    <div class="menu-burger-area">
+      <button class="hamburger" on:click={() => menuOpen = !menuOpen} aria-label="Open menu">
+        <span></span><span></span><span></span>
+      </button>
+      {#if menuOpen}
+        <nav class="app-menu">
+          <button on:click={() => { promptLibraryOpen = true; menuOpen = false; }}>Prompt Library</button>
+          <button on:click={() => { taskPanelOpen = true; menuOpen = false; }}>Task Queue</button>
+        </nav>
+      {/if}
+    </div>
+    <aside class="sidebar conversations">
+      <ConversationList currentSelectedId={selectedConversationId} on:selectconversation={handleSelectConversation} />
+    </aside>
+    <section class="main-chat">
+      <ChatWindow bind:insertContent={promptToInsert} conversationId={selectedConversationId} />
+    </section>
+  </div>
 
   <!-- Drawers/Modals -->
-  <SettingsDrawer bind:open={settingsOpen} />
-  {#if settingsOpen}
-    <div class="drawer-overlay" on:click={() => settingsOpen = false}></div>
-  {/if}
   {#if promptLibraryOpen}
-    <div class="drawer-overlay" on:click={() => promptLibraryOpen = false}></div>
+    <button class="drawer-overlay" type="button" aria-label="Close prompt library" on:click={() => promptLibraryOpen = false} on:keydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { promptLibraryOpen = false; } }}></button>
     <aside class="drawer popout"><PromptLibrary on:insertprompt={handleInsertPrompt} /></aside>
   {/if}
   {#if taskPanelOpen}
-    <div class="drawer-overlay" on:click={() => taskPanelOpen = false}></div>
+    <button class="drawer-overlay" type="button" aria-label="Close task panel" on:click={() => taskPanelOpen = false} on:keydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { taskPanelOpen = false; } }}></button>
     <aside class="drawer popout"><TaskPanel conversationId={selectedConversationId} /></aside>
   {/if}
 </main>
@@ -80,45 +72,55 @@
 <style>
   .app-layout {
     display: flex;
-    height: 100vh; /* Full viewport height */
-    width: 100vw; /* Full viewport width */
-    overflow: hidden; /* Prevent scrollbars on the main layout */
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
   }
-
-  .sidebar {
-    flex-shrink: 0; /* Prevent sidebars from shrinking */
-    height: 100%; /* Take full height */
-    overflow-y: auto; /* Allow scrolling within sidebars */
-    border-right: 1px solid #ccc; /* Separator */
-    background-color: #f9f9f9; /* Consistent background */
-  }
-
-  .sidebar.conversations {
-    width: 250px; /* Adjust width as needed */
-  }
-
-  .main-chat {
-    flex-grow: 1; /* Chat window takes remaining space */
+  .main-content {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
     height: 100%;
-    display: flex; /* Allow ChatWindow to potentially flex internally */
-    flex-direction: column; /* Stack elements vertically */
-    overflow: hidden; /* Prevent chat area itself from scrolling; internal elements should scroll */
-    background-color: #fff; /* White background for chat */
   }
-
-  /* Ensure child components fill the main-chat area */
+  .menu-burger-area {
+    width: 56px;
+    min-width: 56px;
+    border-right: 2px solid #222;
+    background: #fafafa;
+    position: relative;
+    z-index: 1300;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+  }
+  .sidebar {
+    flex-shrink: 0;
+    height: 100%;
+    overflow-y: auto;
+    border-right: 2px solid #222;
+    background-color: #f9f9f9;
+  }
+  .sidebar.conversations {
+    width: 250px;
+  }
+  .main-chat {
+    flex-grow: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background-color: #fff;
+  }
   :global(.main-chat > *) {
      flex-grow: 1;
-     height: 100%; /* Might need adjustment based on ChatWindow structure */
-     overflow: hidden; /* Let ChatWindow handle its own scrolling */
+     height: 100%;
+     overflow: hidden;
   }
-
   .hamburger {
-    position: absolute;
-    top: 18px;
-    right: 24px;
-    left: unset;
-    z-index: 1200;
+    margin-top: 18px;
     width: 42px;
     height: 42px;
     background: none;
@@ -140,13 +142,12 @@
   .app-menu {
     position: absolute;
     top: 60px;
-    right: 24px;
-    left: unset;
+    left: 0;
     background: var(--bg-2, #fff);
     border: 1px solid #ccc;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    z-index: 1250;
+    z-index: 1350;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -170,16 +171,23 @@
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.15);
-    z-index: 1100;
+    z-index: 1200;
+    outline: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    width: 100vw;
+    height: 100vh;
   }
-  .drawer.popout {
+  .drawer.popout, .drawer {
     position: fixed;
     top: 0; right: 0;
     width: min(400px, 100vw);
     height: 100vh;
     background: var(--bg-1, #fff);
     box-shadow: -2px 0 16px rgba(0,0,0,0.15);
-    z-index: 1201;
+    z-index: 1300;
     display: flex;
     flex-direction: column;
     animation: slideInDrawer 0.2s ease;
@@ -188,6 +196,4 @@
     from { transform: translateX(100%); }
     to { transform: translateX(0); }
   }
-  /* Hide old settings-fab and sidebar prompts/tasks */
-  .settings-fab, .sidebar.prompts, .sidebar.tasks { display: none !important; }
 </style>

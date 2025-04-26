@@ -1,36 +1,63 @@
 <script lang="ts">
-  import { settingsStore, type AppSettings } from '$lib/settings';
-  import { onMount, onDestroy } from 'svelte';
+  import { settingsStore, type AppSettings } from '../lib/settings';
+  import { get, writable, type Writable } from 'svelte/store';
+  import { onDestroy } from 'svelte';
+  import { createEventDispatcher } from 'svelte';
+  
+  // Use event dispatcher for two-way binding
+  const dispatch = createEventDispatcher<{
+    openChange: boolean;
+  }>();
+  
   export let open = false;
-  let local: AppSettings;
-  let activeTab: 'Keys' | 'Models' | 'Advanced' = 'Keys';
+  const activeTab: Writable<'Keys' | 'Models' | 'Advanced'> = writable('Keys');
+  let local: AppSettings = structuredClone(get(settingsStore));
   let testResult: { ok: boolean; ms?: number; err?: string } | null = null;
   let models: string[] = [];
   let loadingModels = false;
   let modelError: string | null = null;
 
-  const unsub = settingsStore.subscribe(v => local = structuredClone(v));
+  function updateOpen(value: boolean) {
+    open = value;
+    dispatch('openChange', value);
+  }
+
+  // Subscribe to settings changes
+  const unsub = settingsStore.subscribe((v: AppSettings) => {
+    if (!open) {
+      // Only update local if drawer is closed to prevent overwriting user edits
+      local = structuredClone(v);
+    }
+  });
+
   function save() {
-    settingsStore.patch(s => Object.assign(s, local));
+    testResult = null;
+    settingsStore.patch((s: AppSettings) => {
+      // Deep copy to ensure all nested objects are updated
+      Object.assign(s, structuredClone(local));
+      return s;
+    });
     test();
   }
+
   async function test() {
     testResult = null;
     try {
-      const mod = await import('$lib/providerTest');
+      const mod = await import('../lib/providerTest');
       testResult = await mod.testProvider(local);
     } catch (e) {
       testResult = { ok: false, err: 'Test failed' };
     }
   }
+
   async function fetchModels() {
     loadingModels = true;
     models = [];
     modelError = null;
     try {
-      const mod = await import('$lib/providerTest');
+      const mod = await import('../lib/providerTest');
       if (mod.fetchProviderModels) {
-        models = await mod.fetchProviderModels(local.defaultProvider, local.providers[local.defaultProvider]);
+        models = await mod.fetchProviderModels(local?.defaultProvider, local?.providers[local?.defaultProvider ?? 'openrouter']);
         if (Array.isArray(models)) models = models.slice().sort((a, b) => a.localeCompare(b));
       }
     } catch (e) {
@@ -40,68 +67,81 @@
     }
   }
 
-  $: if (activeTab === 'Models') {
+  $: if ($activeTab === 'Models') {
     fetchModels();
   }
 
-  $: if (local && local.defaultProvider) {
+  $: if (local?.defaultProvider) {
     fetchModels();
   }
+
+  $: if (open) {
+    // Refresh local settings from store when drawer is opened
+    local = structuredClone(get(settingsStore));
+  }
+
   onDestroy(unsub);
 </script>
 
-<button class="icon-btn" on:click={() => open = true} title="Settings">
-  <svg width="20" height="20" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8v4l3 3" stroke="currentColor" stroke-width="2" fill="none"/></svg>
-</button>
-
 {#if open}
-  <aside class="drawer">
+  <section class="drawer" role="dialog" aria-modal="true" tabindex="-1" on:keydown={(e) => { if (e.key === 'Escape') updateOpen(false); }}>
     <header>
       <nav>
-        <button on:click={() => activeTab = 'Keys'} class:active={activeTab === 'Keys'}>Keys</button>
-        <button on:click={() => activeTab = 'Models'} class:active={activeTab === 'Models'}>Models</button>
-        <button on:click={() => activeTab = 'Advanced'} class:active={activeTab === 'Advanced'}>Advanced</button>
+        <button on:click={() => activeTab.set('Keys')} class:active={$activeTab === 'Keys'}>Keys</button>
+        <button on:click={() => activeTab.set('Models')} class:active={$activeTab === 'Models'}>Models</button>
+        <button on:click={() => activeTab.set('Advanced')} class:active={$activeTab === 'Advanced'}>Advanced</button>
       </nav>
     </header>
     <form on:submit|preventDefault={save}>
-      {#if activeTab === 'Keys'}
-        <label>OpenRouter API Key <input type="password" bind:value={local.providers.openrouter.key}/></label>
-        <label>OpenAI API Key <input type="password" bind:value={local.providers.openai.key}/></label>
-        <label>Anthropic API Key <input type="password" bind:value={local.providers.anthropic.key}/></label>
-        <label>Grok API Key <input type="password" bind:value={local.providers.grok.key}/></label>
+      {#if $activeTab === 'Keys'}
+        <label for="openrouter-key">OpenRouter API Key</label>
+        <input id="openrouter-key" name="openrouter-key" type="password" bind:value={local.providers.openrouter.key} />
+        <label for="openai-key">OpenAI API Key</label>
+        <input id="openai-key" name="openai-key" type="password" bind:value={local.providers.openai.key} />
+        <label for="anthropic-key">Anthropic API Key</label>
+        <input id="anthropic-key" name="anthropic-key" type="password" bind:value={local.providers.anthropic.key} />
+        <label for="grok-key">Grok API Key</label>
+        <input id="grok-key" name="grok-key" type="password" bind:value={local.providers.grok.key} />
       {/if}
-      {#if activeTab === 'Models'}
+      {#if $activeTab === 'Models'}
         <fieldset class="provider-radio-group">
           <legend>Default Provider</legend>
-          <label><input type="radio" bind:group={local.defaultProvider} value="openrouter" />OpenRouter</label>
-          <label><input type="radio" bind:group={local.defaultProvider} value="openai" />OpenAI</label>
-          <label><input type="radio" bind:group={local.defaultProvider} value="anthropic" />Anthropic</label>
-          <label><input type="radio" bind:group={local.defaultProvider} value="grok" />Grok</label>
+          <label for="provider-openrouter"><input id="provider-openrouter" name="provider" type="radio" bind:group={local.defaultProvider} value="openrouter" />OpenRouter</label>
+          <label for="provider-openai"><input id="provider-openai" name="provider" type="radio" bind:group={local.defaultProvider} value="openai" />OpenAI</label>
+          <label for="provider-anthropic"><input id="provider-anthropic" name="provider" type="radio" bind:group={local.defaultProvider} value="anthropic" />Anthropic</label>
+          <label for="provider-grok"><input id="provider-grok" name="provider" type="radio" bind:group={local.defaultProvider} value="grok" />Grok</label>
         </fieldset>
         {#if loadingModels}
           <div class="model-loading">Loading models…</div>
         {:else if models.length > 0}
-          <label>Model
-            <select bind:value={local.model}>
-              {#each models as m}
-                <option value={m}>{m}</option>
-              {/each}
-            </select>
-          </label>
+          <label for="model-select">Model</label>
+          <select id="model-select" name="model-select" bind:value={local.model}>
+            {#each models as m}
+              <option value={m}>{m}</option>
+            {/each}
+          </select>
         {:else}
-          <label>Model <input type="text" bind:value={local.model} placeholder="Enter model name" /></label>
+          <label for="model-input">Model</label>
+          <input id="model-input" name="model-input" type="text" bind:value={local.model} placeholder="Enter model name" />
         {/if}
         {#if modelError}
           <div class="error">{modelError}</div>
         {/if}
-        <label>Temperature <input type="range" min="0" max="2" step="0.01" bind:value={local.temperature}/><span>{local.temperature}</span></label>
-        <label>Timeout (ms) <input type="number" min="1000" max="120000" step="1000" bind:value={local.timeout}/></label>
+        <label for="temperature">Temperature</label>
+        <input id="temperature" name="temperature" type="range" min="0" max="2" step="0.01" bind:value={local.temperature} />
+        <span>{local.temperature}</span>
+        <label for="timeout">Timeout (ms)</label>
+        <input id="timeout" name="timeout" type="number" min="1000" max="120000" step="1000" bind:value={local.timeout} />
       {/if}
-      {#if activeTab === 'Advanced'}
-        <label>OpenRouter Base URL <input type="text" bind:value={local.providers.openrouter.baseUrl}/></label>
-        <label>OpenAI Base URL <input type="text" bind:value={local.providers.openai.baseUrl}/></label>
-        <label>Anthropic Base URL <input type="text" bind:value={local.providers.anthropic.baseUrl}/></label>
-        <label>Grok Base URL <input type="text" bind:value={local.providers.grok.baseUrl}/></label>
+      {#if $activeTab === 'Advanced'}
+        <label for="openrouter-baseurl">OpenRouter Base URL</label>
+        <input id="openrouter-baseurl" name="openrouter-baseurl" type="text" bind:value={local.providers.openrouter.baseUrl} />
+        <label for="openai-baseurl">OpenAI Base URL</label>
+        <input id="openai-baseurl" name="openai-baseurl" type="text" bind:value={local.providers.openai.baseUrl} />
+        <label for="anthropic-baseurl">Anthropic Base URL</label>
+        <input id="anthropic-baseurl" name="anthropic-baseurl" type="text" bind:value={local.providers.anthropic.baseUrl} />
+        <label for="grok-baseurl">Grok Base URL</label>
+        <input id="grok-baseurl" name="grok-baseurl" type="text" bind:value={local.providers.grok.baseUrl} />
       {/if}
       <div class="actions">
         <button type="submit" class="save-test-btn">Save &amp; Test</button>
@@ -114,7 +154,7 @@
         {/if}
       </div>
     </form>
-  </aside>
+  </section>
 {/if}
 
 <style>
@@ -139,9 +179,7 @@ label { display: flex; flex-direction: column; gap: 0.25rem; }
   margin-bottom: 1rem;
 }
 .provider-radio-group label {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
+  display: flex; align-items: center; gap: 0.25rem;
   font-weight: normal;
 }
 .model-loading {
