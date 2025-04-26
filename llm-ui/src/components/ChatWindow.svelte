@@ -6,7 +6,8 @@
     listMessages,
     appendMessage,
     type Message,
-    db // Import db instance
+    db, // Import db instance
+    branchConversation // Import branchConversation function
   } from '../lib/db';
   import { settingsStore } from '../lib/settings';
   import { get } from 'svelte/store';
@@ -20,7 +21,7 @@
   // --- Props ---
   // Prop to receive content from the prompt library
   export let insertContent: string | null = null;
-  export let conversationId: string | null = null; // Accept conversationId from parent
+  export let conversationId: string; // Accept conversationId from parent
 
   // Reference to the textarea element for potential focus management
   let textareaElement: HTMLTextAreaElement;
@@ -182,6 +183,16 @@
         console.error('Failed to copy all messages:', err);
       });
   }
+
+  function branchConversationFromMessage(message: Partial<Message>) {
+    if (typeof conversationId === 'string' && message && typeof message.id !== 'undefined') {
+      branchConversation(conversationId, String(message.id));
+    } else if (typeof conversationId === 'number' && message && typeof message.id !== 'undefined') {
+      branchConversation(String(conversationId), String(message.id));
+    } else {
+      console.error('Missing conversationId or message.id for branching');
+    }
+  }
 </script>
 
 <style>
@@ -298,6 +309,19 @@
     font-weight: bold;
     cursor: pointer;
   }
+  .branch-msg-btn {
+    background: #f7f7f7;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 2px 7px;
+    margin-top: 6px;
+    margin-left: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .branch-msg-btn:hover {
+    background: #e7e7e7;
+  }
 </style>
 
 <div class="chat-window">
@@ -325,6 +349,13 @@
           </button>
         </div>
         <pre class="msg-content">{@html highlight(m.content, searchTerm)}</pre>
+        {#if m.role === 'assistant'}
+          <div class="msg-actions">
+            <button class="branch-msg-btn" title="Branch from this message" aria-label="Branch from this message" on:click={() => branchConversationFromMessage(m)}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v12"/><circle cx="6" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 15c8 0 8-12 16-12v12"/></svg>
+            </button>
+          </div>
+        {/if}
       </div>
     {/each}
   </div>
@@ -333,11 +364,6 @@
       Copy All to Markdown
     </button>
     <form class="composer" on:submit|preventDefault={sendMessage}>
-      {#if blocked}
-        <div class="banner">
-          Add an API key
-        </div>
-      {/if}
       <textarea
         rows="3"
         placeholder="Type a message…"

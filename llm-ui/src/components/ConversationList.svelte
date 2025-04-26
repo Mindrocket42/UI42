@@ -6,7 +6,8 @@
     type Conversation,
     branchConversation as dbBranchConversation,
     createConversation as dbCreateConversation, // Import create func
-    deleteConversation as dbDeleteConversation  // Import delete func
+    deleteConversation as dbDeleteConversation,  // Import delete func
+    updateConversation as dbUpdateConversation  // Import update func
   } from '../lib/db';
   import { createEventDispatcher } from 'svelte'; // Import event dispatcher
   import { writable } from 'svelte/store'; // Import writable
@@ -97,6 +98,15 @@
     }
   }
 
+  function renameConversation(conversationId: string) {
+    const newName = prompt('Enter a new name for this conversation:');
+    if (newName && newName.trim()) {
+      // Update in DB and refresh list
+      dbUpdateConversation(conversationId, { title: newName.trim() });
+      loadConversations();
+    }
+  }
+
   function selectConversation(id: string) {
     // Don't set internal state, dispatch event to parent
     dispatch('selectconversation', { id });
@@ -120,9 +130,11 @@
             <span class="convo-title">{convo.title || `Conversation ${convo.id}`}</span>
         </button>
         <div class="convo-actions">
-          <!-- Branch Icon -->
-          <button title="Branch" aria-label="Branch" on:click|stopPropagation={() => branchConversation(convo.id)} style="padding:0 4px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v12"/><circle cx="6" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 15c8 0 8-12 16-12v12"/></svg>
+          <!-- Rename Icon -->
+          <button title="Rename" aria-label="Rename" on:click|stopPropagation={() => renameConversation(convo.id)} style="padding:0 4px;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 21h4l11-11a2.828 2.828 0 0 0-4-4L4 17v4z"></path>
+            </svg>
           </button>
           <!-- Export Icon -->
           <ExportButton conversationId={convo.id} />
@@ -181,7 +193,8 @@
   }
 
   .conversation-list li {
-    padding: 10px 8px;
+    padding: 10px 8px 10px 8px;
+    padding-right: 28px; /* Add space for scrollbar so action buttons are always visible */
     margin-bottom: 5px;
     border-radius: 4px;
     /* cursor: pointer; */ /* Removed as li is no longer the main interactive element */

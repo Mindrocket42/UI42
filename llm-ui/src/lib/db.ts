@@ -206,6 +206,10 @@ export async function deleteConversation(conversationId: string): Promise<void> 
   console.log(`Deleted conversation ${conversationId} and its messages`);
 }
 
+export async function updateConversation(id: string, updates: Partial<Conversation>) {
+  return db.conversations.update(id, updates);
+}
+
 /* ------------------------------------------------------------------ */
 /* Prompt Helper functions                                            */
 /* ------------------------------------------------------------------ */

@@ -124,24 +124,26 @@
   </select>
 
   <label for="model-select">Model</label>
-  {#if loadingModels}
-    <span>Loading…</span>
-  {:else if models.length > 0}
-    <select id="model-select" bind:value={settings.model} on:change={setModel}>
-      {#each models as m}
-        <option value={m}>{m}</option>
-      {/each}
-    </select>
-  {:else}
-    <input id="model-select" type="text" bind:value={settings.model} on:input={setModel} placeholder="Enter model name" />
-  {/if}
+  <div style="min-width:180px;display:inline-block;">
+    {#if loadingModels}
+      <span>Loading…</span>
+    {:else if models.length > 0}
+      <select id="model-select" bind:value={settings.model} on:change={setModel}>
+        {#each models as m}
+          <option value={m}>{m}</option>
+        {/each}
+      </select>
+    {:else}
+      <input id="model-select" type="text" bind:value={settings.model} on:input={setModel} placeholder="Enter model name" />
+    {/if}
+  </div>
   {#if modelError}
     <span class="error">{modelError}</span>
   {/if}
 
   <label for="temperature-input">Temperature</label>
   <input id="temperature-input" type="number" min="0" max="2" step="0.01" bind:value={settings.temperature} on:change={setTemperature} style="width: 70px; margin-right: 10px;" />
-  <input id="temperature-slider" type="range" min="0" max="2" step="0.01" bind:value={settings.temperature} on:input={setTemperature} style="width: 120px; vertical-align: middle;" />
+  <input id="temperature-slider" type="range" min="0" max="2" step="0.01" bind:value={settings.temperature} on:change={setTemperature} style="width: 120px; vertical-align: middle;" />
 
   <button class="advanced-btn" type="button" on:click={openAdvanced}>Advanced</button>
 </div>
