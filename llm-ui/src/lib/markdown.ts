@@ -3,7 +3,7 @@ import type { Message } from './db';
 /**
  * Converts an array of chat messages into a Markdown string suitable for Obsidian.
  *
- * - Adds H2 headings for User and Assistant roles.
+ * - Adds H2 headings for User and Assistant roles (with model name if present).
  * - Includes message content, preserving existing Markdown (including fenced code blocks).
  * - Ignores system messages.
  *
@@ -17,7 +17,8 @@ export function chatToMarkdown(messages: Message[]): string {
     if (message.role === 'user') {
       markdownParts.push(`## User\n\n${message.content}\n`);
     } else if (message.role === 'assistant') {
-      markdownParts.push(`## Assistant\n\n${message.content}\n`);
+      const modelLabel = message.model ? ` - ${message.model}` : '';
+      markdownParts.push(`## Assistant${modelLabel}\n\n${message.content}\n`);
     }
     // System messages are ignored as per initial plan
   }

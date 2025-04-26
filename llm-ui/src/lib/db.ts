@@ -8,7 +8,7 @@ import type { Table, WhereClause, Collection } from 'dexie'; // Import specific 
  * ----------
  * conversations: primary key id (string, UUID)
  * messages:      primary key ++id (auto‑increment),
- *                indexed conversationId, createdAt
+ *                indexed conversationId, createdAt, model
  * prompts:       primary key ++id (auto-increment),
  *                indexed name, updatedAt
  * tasks:         primary key ++id (auto-increment),
@@ -30,6 +30,7 @@ export interface Message {
   role: ChatRole;
   content: string;
   createdAt: Date;
+  model?: string; // store the model used for this message
 }
 
 export interface Prompt {
@@ -63,7 +64,7 @@ class ChatDB extends Dexie {
     // Increment version number for schema change (v4)
     this.version(4).stores({
       conversations: 'id, updatedAt',
-      messages: '++id, conversationId, createdAt',
+      messages: '++id, conversationId, createdAt, model',
       prompts: '++id, name, updatedAt',
       tasks: '++id, status, createdAt, [status+createdAt]' // Added compound index
     }).upgrade(tx => {
@@ -144,6 +145,7 @@ export async function appendMessage(msg: Omit<Message, 'id' | 'createdAt'> & { c
         role: msg.role,
         content: msg.content,
         createdAt: msg.createdAt || new Date(),
+        model: msg.model,
     };
     const id = await db.messages.add(messageToSave);
     await db.touchConversation(msg.conversationId);
@@ -202,6 +204,10 @@ export async function deleteConversation(conversationId: string): Promise<void> 
     await db.conversations.delete(conversationId);
   });
   console.log(`Deleted conversation ${conversationId} and its messages`);
+}
+
+export async function updateConversation(id: string, updates: Partial<Conversation>) {
+  return db.conversations.update(id, updates);
 }
 
 /* ------------------------------------------------------------------ */

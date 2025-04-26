@@ -6,7 +6,8 @@
     type Conversation,
     branchConversation as dbBranchConversation,
     createConversation as dbCreateConversation, // Import create func
-    deleteConversation as dbDeleteConversation  // Import delete func
+    deleteConversation as dbDeleteConversation,  // Import delete func
+    updateConversation as dbUpdateConversation  // Import update func
   } from '../lib/db';
   import { createEventDispatcher } from 'svelte'; // Import event dispatcher
   import { writable } from 'svelte/store'; // Import writable
@@ -29,12 +30,17 @@
   });
 
   async function loadConversations() {
-    const convos = await db.conversations.orderBy('lastModified').reverse().toArray();
-    conversations.set(convos);
-    // Select the first conversation by default if none is selected by the parent
-    if (currentSelectedId === null && convos.length > 0 && convos[0].id) {
-      // Don't set internal state, dispatch event to parent
-      dispatch('selectconversation', { id: convos[0].id });
+    try {
+      const convos = await db.conversations.orderBy('updatedAt').reverse().toArray();
+      conversations.set(convos);
+      // Select the first conversation by default if none is selected by the parent
+      if (currentSelectedId === null && convos.length > 0 && convos[0].id) {
+        // Don't set internal state, dispatch event to parent
+        dispatch('selectconversation', { id: convos[0].id });
+      }
+    } catch (error) {
+      console.error("Failed to load conversations:", error);
+      // Optionally set an error state for the UI
     }
   }
 
@@ -92,10 +98,24 @@
     }
   }
 
+  function renameConversation(conversationId: string) {
+    const newName = prompt('Enter a new name for this conversation:');
+    if (newName && newName.trim()) {
+      // Update in DB and refresh list
+      dbUpdateConversation(conversationId, { title: newName.trim() });
+      loadConversations();
+    }
+  }
+
   function selectConversation(id: string) {
     // Don't set internal state, dispatch event to parent
     dispatch('selectconversation', { id });
     console.log(`Selected conversation ${id} (dispatched)`);
+  }
+
+  // Expose a refresh method for parent components (App.svelte) to call
+  export function refresh() {
+    loadConversations();
   }
 
 </script>
@@ -115,12 +135,18 @@
             <span class="convo-title">{convo.title || `Conversation ${convo.id}`}</span>
         </button>
         <div class="convo-actions">
-          <!-- Actions -->
-          <button title="Branch" on:click|stopPropagation={() => branchConversation(convo.id)}>Branch</button>
-          <!-- ExportButton is a component, stopPropagation cannot be applied directly here.
-               Clicking Export *will* also trigger selectConversation. This might be acceptable. -->
+          <!-- Rename Icon -->
+          <button title="Rename" aria-label="Rename" on:click|stopPropagation={() => renameConversation(convo.id)} style="padding:0 4px;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 21h4l11-11a2.828 2.828 0 0 0-4-4L4 17v4z"></path>
+            </svg>
+          </button>
+          <!-- Export Icon -->
           <ExportButton conversationId={convo.id} />
-          <button title="Delete" on:click|stopPropagation={() => deleteConversation(convo.id)}>&times;</button>
+          <!-- Delete Icon -->
+          <button title="Delete" aria-label="Delete" on:click|stopPropagation={() => deleteConversation(convo.id)} style="padding:0 4px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+          </button>
         </div>
       </li>
     {:else}
@@ -172,7 +198,8 @@
   }
 
   .conversation-list li {
-    padding: 10px 8px;
+    padding: 10px 8px 10px 8px;
+    padding-right: 28px; /* Add space for scrollbar so action buttons are always visible */
     margin-bottom: 5px;
     border-radius: 4px;
     /* cursor: pointer; */ /* Removed as li is no longer the main interactive element */
@@ -249,4 +276,12 @@
      color: #000;
    }
 
+  /* Remove blue highlight from model/searched messages */
+  .model-message, .search-highlight {
+    background: none !important;
+    color: inherit !important;
+    font-weight: normal !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
 </style>
