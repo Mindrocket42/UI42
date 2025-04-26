@@ -61,9 +61,9 @@
 
 <style>
 .top-settings-bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 2fr 2fr 1fr;
   align-items: center;
-  gap: 1.25rem;
   background: var(--bg-2, #f5f5f5);
   padding: 0.25rem 1.25rem 0.15rem 1.25rem;
   border-bottom: 2px solid #222;
@@ -73,7 +73,20 @@
   font-size: 0.98rem;
   width: 100%;
   box-sizing: border-box;
+  gap: 0.5rem;
 }
+.topbar-cell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+  padding: 0 0.3rem;
+}
+.topbar-provider { background: #cce3ff; }
+.topbar-model { background: #ffa500; }
+.topbar-temp { background: #7fff7f; }
+.topbar-advanced { background: #ffe066; justify-content: flex-end; }
+
 .top-settings-bar label {
   font-weight: 500;
   margin-right: 0.15rem;
@@ -103,49 +116,58 @@
 }
 @media (max-width: 900px) {
   .top-settings-bar {
-    flex-wrap: wrap;
-    gap: 0.7rem;
-    padding: 0.1rem 0.5rem 0.1rem 0.5rem;
-    min-height: 32px;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
   }
-  .advanced-btn {
-    margin-left: 0;
-    margin-top: 0.5rem;
+  .topbar-cell {
+    min-width: 0;
+    width: 100%;
   }
 }
 </style>
 
 <div class="top-settings-bar">
-  <label for="provider-select">Provider</label>
-  <select id="provider-select" bind:value={settings.defaultProvider} on:change={setProvider}>
-    {#each Object.keys(settings.providers) as provider}
-      <option value={provider}>{provider}</option>
-    {/each}
-  </select>
-
-  <label for="model-select">Model</label>
-  <div style="min-width:180px;display:inline-block;">
+  <div class="topbar-cell topbar-provider">
+    <label for="provider-select">Provider</label>
+    <select id="provider-select" name="provider-select" bind:value={settings.defaultProvider} on:change={setProvider}>
+      {#each Object.keys(settings.providers) as provider}
+        <option value={provider}>{provider}</option>
+      {/each}
+    </select>
+  </div>
+  <div class="topbar-cell topbar-model">
     {#if loadingModels}
-      <span>Loading…</span>
+      <label>Model</label>
+      <div style="min-width:120px;flex:1;">
+        <span>Loading…</span>
+      </div>
     {:else if models.length > 0}
-      <select id="model-select" bind:value={settings.model} on:change={setModel}>
-        {#each models as m}
-          <option value={m}>{m}</option>
-        {/each}
-      </select>
+      <label for="model-select">Model</label>
+      <div style="min-width:120px;flex:1;">
+        <select id="model-select" name="model-select" bind:value={settings.model} on:change={setModel}>
+          {#each models as m}
+            <option value={m}>{m}</option>
+          {/each}
+        </select>
+      </div>
     {:else}
-      <input id="model-select" type="text" bind:value={settings.model} on:input={setModel} placeholder="Enter model name" />
+      <label for="model-text">Model</label>
+      <div style="min-width:120px;flex:1;">
+        <input id="model-text" name="model-text" type="text" bind:value={settings.model} on:input={setModel} placeholder="Enter model name" />
+      </div>
+    {/if}
+    {#if modelError}
+      <span class="error">{modelError}</span>
     {/if}
   </div>
-  {#if modelError}
-    <span class="error">{modelError}</span>
-  {/if}
-
-  <label for="temperature-input">Temperature</label>
-  <input id="temperature-input" type="number" min="0" max="2" step="0.01" bind:value={settings.temperature} on:change={setTemperature} style="width: 70px; margin-right: 10px;" />
-  <input id="temperature-slider" type="range" min="0" max="2" step="0.01" bind:value={settings.temperature} on:change={setTemperature} style="width: 120px; vertical-align: middle;" />
-
-  <button class="advanced-btn" type="button" on:click={openAdvanced}>Advanced</button>
+  <div class="topbar-cell topbar-temp">
+    <label for="temperature-input">Temperature</label>
+    <input id="temperature-input" name="temperature-input" type="number" min="0" max="2" step="0.01" bind:value={settings.temperature} on:change={setTemperature} style="width: 70px; margin-right: 10px;" />
+    <input id="temperature-slider" name="temperature-slider" type="range" min="0" max="2" step="0.01" bind:value={settings.temperature} on:change={setTemperature} style="width: 120px; vertical-align: middle;" />
+  </div>
+  <div class="topbar-cell topbar-advanced">
+    <button class="advanced-btn" type="button" on:click={openAdvanced}>Advanced</button>
+  </div>
 </div>
 
 {#if showAdvanced}

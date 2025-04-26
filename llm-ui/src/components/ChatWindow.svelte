@@ -365,6 +365,8 @@
     </button>
     <form class="composer" on:submit|preventDefault={sendMessage}>
       <textarea
+        id="chat-input"
+        name="chat-input"
         rows="3"
         placeholder="Type a message…"
         bind:value={input}
@@ -377,6 +379,7 @@
           }
         }}
         disabled={blocked}
+        style="min-height: 3em; max-height: 9em; overflow-y: auto; resize: vertical;"
       ></textarea>
       <button type="submit" disabled={!input.trim() || blocked}>Send</button> <!-- Disable send if no input/key -->
     </form>
