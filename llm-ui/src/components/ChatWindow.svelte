@@ -163,6 +163,25 @@
         console.error('Failed to copy message:', err);
       });
   }
+
+  // Add function to copy all messages as markdown
+  function copyAllMessagesAsMarkdown() {
+    let md = '';
+    for (const m of filteredMessages) {
+      if (m.role === 'user') {
+        md += `## User\n\n${m.content}\n`;
+      } else if (m.role === 'assistant') {
+        md += `## Assistant\n\n${m.content}\n`;
+      }
+    }
+    navigator.clipboard.writeText(md)
+      .then(() => {
+        console.log('All messages copied to clipboard as markdown');
+      })
+      .catch(err => {
+        console.error('Failed to copy all messages:', err);
+      });
+  }
 </script>
 
 <style>
@@ -269,6 +288,16 @@
   .copy-msg-btn:hover {
     background: #e7e7e7;
   }
+  .copy-all-btn {
+    margin: 0.5rem auto 0.5rem auto;
+    display: block;
+    background: #f7f7f7;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 0.4rem 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+  }
 </style>
 
 <div class="chat-window">
@@ -299,27 +328,31 @@
       </div>
     {/each}
   </div>
-
-  <form class="composer" on:submit|preventDefault={sendMessage}>
-    {#if blocked}
-      <div class="banner">
-        Add an API key
-      </div>
-    {/if}
-    <textarea
-      rows="3"
-      placeholder="Type a message…"
-      bind:value={input}
-      bind:this={textareaElement}
-      on:keydown={(e) => {
-        // Optional: Allow sending with Enter, Shift+Enter for newline
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault(); // Prevent default newline
-          sendMessage();
-        }
-      }}
-      disabled={blocked}
-    ></textarea>
-    <button type="submit" disabled={!input.trim() || blocked}>Send</button> <!-- Disable send if no input/key -->
-  </form>
+  <div class="chat-footer">
+    <button class="copy-all-btn" on:click={copyAllMessagesAsMarkdown}>
+      Copy All to Markdown
+    </button>
+    <form class="composer" on:submit|preventDefault={sendMessage}>
+      {#if blocked}
+        <div class="banner">
+          Add an API key
+        </div>
+      {/if}
+      <textarea
+        rows="3"
+        placeholder="Type a message…"
+        bind:value={input}
+        bind:this={textareaElement}
+        on:keydown={(e) => {
+          // Optional: Allow sending with Enter, Shift+Enter for newline
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault(); // Prevent default newline
+            sendMessage();
+          }
+        }}
+        disabled={blocked}
+      ></textarea>
+      <button type="submit" disabled={!input.trim() || blocked}>Send</button> <!-- Disable send if no input/key -->
+    </form>
+  </div>
 </div>

@@ -120,12 +120,16 @@
             <span class="convo-title">{convo.title || `Conversation ${convo.id}`}</span>
         </button>
         <div class="convo-actions">
-          <!-- Actions -->
-          <button title="Branch" on:click|stopPropagation={() => branchConversation(convo.id)}>Branch</button>
-          <!-- ExportButton is a component, stopPropagation cannot be applied directly here.
-               Clicking Export *will* also trigger selectConversation. This might be acceptable. -->
+          <!-- Branch Icon -->
+          <button title="Branch" aria-label="Branch" on:click|stopPropagation={() => branchConversation(convo.id)} style="padding:0 4px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v12"/><circle cx="6" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 15c8 0 8-12 16-12v12"/></svg>
+          </button>
+          <!-- Export Icon -->
           <ExportButton conversationId={convo.id} />
-          <button title="Delete" on:click|stopPropagation={() => deleteConversation(convo.id)}>&times;</button>
+          <!-- Delete Icon -->
+          <button title="Delete" aria-label="Delete" on:click|stopPropagation={() => deleteConversation(convo.id)} style="padding:0 4px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+          </button>
         </div>
       </li>
     {:else}
