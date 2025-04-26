@@ -29,12 +29,17 @@
   });
 
   async function loadConversations() {
-    const convos = await db.conversations.orderBy('lastModified').reverse().toArray();
-    conversations.set(convos);
-    // Select the first conversation by default if none is selected by the parent
-    if (currentSelectedId === null && convos.length > 0 && convos[0].id) {
-      // Don't set internal state, dispatch event to parent
-      dispatch('selectconversation', { id: convos[0].id });
+    try {
+      const convos = await db.conversations.orderBy('updatedAt').reverse().toArray();
+      conversations.set(convos);
+      // Select the first conversation by default if none is selected by the parent
+      if (currentSelectedId === null && convos.length > 0 && convos[0].id) {
+        // Don't set internal state, dispatch event to parent
+        dispatch('selectconversation', { id: convos[0].id });
+      }
+    } catch (error) {
+      console.error("Failed to load conversations:", error);
+      // Optionally set an error state for the UI
     }
   }
 
