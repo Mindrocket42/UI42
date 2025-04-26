@@ -193,6 +193,17 @@
       console.error('Missing conversationId or message.id for branching');
     }
   }
+
+  function autoResize() {
+    if (textareaElement) {
+      textareaElement.style.height = 'auto';
+      textareaElement.style.height = textareaElement.scrollHeight + 'px';
+    }
+  }
+
+  onMount(() => {
+    autoResize();
+  });
 </script>
 
 <style>
@@ -216,12 +227,17 @@
     background: #fafafa;
   }
   .msg {
-    max-width: 60ch;
-    margin: 0.3rem 0;
-    padding: 0.6rem 0.8rem;
-    border-radius: 6px;
-    white-space: pre-wrap;
+    max-width: 70%;
+    width: auto;
+    margin-left: 0;
+    margin-right: 0;
+    font-size: 1.08rem;
+    padding: 0.85rem 1.2rem;
+    border-radius: 1.1em;
+    background: #f8f8fa;
+    box-shadow: 0 1px 4px #0001;
     word-break: break-word;
+    margin-bottom: 0.7rem;
   }
   .msg.user {
     margin-left: auto;
@@ -367,19 +383,19 @@
       <textarea
         id="chat-input"
         name="chat-input"
-        rows="3"
+        rows="1"
         placeholder="Type a message…"
         bind:value={input}
         bind:this={textareaElement}
+        on:input={autoResize}
         on:keydown={(e) => {
-          // Optional: Allow sending with Enter, Shift+Enter for newline
           if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault(); // Prevent default newline
+            e.preventDefault();
             sendMessage();
           }
         }}
         disabled={blocked}
-        style="min-height: 3em; max-height: 9em; overflow-y: auto; resize: vertical;"
+        style="min-height: 2.2em; max-height: 12em; overflow-y: auto; resize: none;"
       ></textarea>
       <button type="submit" disabled={!input.trim() || blocked}>Send</button> <!-- Disable send if no input/key -->
     </form>
