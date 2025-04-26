@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import ChatWindow from './components/ChatWindow.svelte';
   import ConversationList from './components/ConversationList.svelte';
+  import type ConversationListType from './components/ConversationList.svelte';
   import PromptLibrary from './components/PromptLibrary.svelte';
   import TaskPanel from './components/TaskPanel.svelte';
   import { getOrCreateConversation, type Conversation } from './lib/db';
@@ -12,6 +13,7 @@
   let menuOpen = false;
   let promptLibraryOpen = false;
   let taskPanelOpen = false;
+  let conversationListRef: typeof ConversationListType;
 
   // Fetch initial/last conversation on mount
   onMount(async () => {
@@ -33,6 +35,13 @@
     selectedConversationId = event.detail.id;
     console.log("App selected conversation:", selectedConversationId);
   }
+
+  function handleBranchConversation(event: CustomEvent<{ id: string }>) {
+    selectedConversationId = event.detail.id;
+    // Refresh the conversation list to ensure the new branch is visible
+    conversationListRef?.refresh?.();
+    console.log("Branched and selected conversation:", selectedConversationId);
+  }
 </script>
 
 <main class="app-layout">
@@ -51,10 +60,10 @@
       {/if}
     </div>
     <aside class="sidebar conversations">
-      <ConversationList currentSelectedId={selectedConversationId} on:selectconversation={handleSelectConversation} />
+      <ConversationList bind:this={conversationListRef} currentSelectedId={selectedConversationId} on:selectconversation={handleSelectConversation} />
     </aside>
     <section class="main-chat">
-      <ChatWindow bind:insertContent={promptToInsert} conversationId={selectedConversationId} />
+      <ChatWindow bind:insertContent={promptToInsert} conversationId={selectedConversationId} on:branchconversation={handleBranchConversation} />
     </section>
   </div>
 

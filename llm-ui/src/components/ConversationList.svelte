@@ -113,6 +113,11 @@
     console.log(`Selected conversation ${id} (dispatched)`);
   }
 
+  // Expose a refresh method for parent components (App.svelte) to call
+  export function refresh() {
+    loadConversations();
+  }
+
 </script>
 
 <div class="sidebar">

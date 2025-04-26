@@ -12,6 +12,7 @@
   import { settingsStore } from '../lib/settings';
   import { get } from 'svelte/store';
   import { chatToMarkdown } from '../lib/markdown';
+  import { createEventDispatcher } from 'svelte'; // Add this import
 
   let messages: Message[] = [];
   let input = '';
@@ -147,15 +148,10 @@
   let blocked = false;
   $: blocked = !get(settingsStore).providers[get(settingsStore).defaultProvider].key;
 
-  // Add the missing function for copying a single message as markdown
+  // Refactored copyMessageAsMarkdown and copyAllMessagesAsMarkdown to use chatToMarkdown
   function copyMessageAsMarkdown(message: Message) {
-    // Inline conversion to markdown for a single message
-    let md = '';
-    if (message.role === 'user') {
-      md = `## User\n\n${message.content}\n`;
-    } else if (message.role === 'assistant') {
-      md = `## Assistant\n\n${message.content}\n`;
-    }
+    // Use chatToMarkdown for a single message
+    const md = chatToMarkdown([message]);
     navigator.clipboard.writeText(md)
       .then(() => {
         console.log('Message copied to clipboard as markdown');
@@ -167,14 +163,8 @@
 
   // Add function to copy all messages as markdown
   function copyAllMessagesAsMarkdown() {
-    let md = '';
-    for (const m of filteredMessages) {
-      if (m.role === 'user') {
-        md += `## User\n\n${m.content}\n`;
-      } else if (m.role === 'assistant') {
-        md += `## Assistant\n\n${m.content}\n`;
-      }
-    }
+    // Use chatToMarkdown for all filtered messages
+    const md = chatToMarkdown(filteredMessages);
     navigator.clipboard.writeText(md)
       .then(() => {
         console.log('All messages copied to clipboard as markdown');
@@ -184,11 +174,18 @@
       });
   }
 
-  function branchConversationFromMessage(message: Partial<Message>) {
+  const dispatch = createEventDispatcher();
+  async function branchConversationFromMessage(message: Partial<Message>) {
     if (typeof conversationId === 'string' && message && typeof message.id !== 'undefined') {
-      branchConversation(conversationId, String(message.id));
+      const newId = await branchConversation(conversationId, String(message.id));
+      if (newId) {
+        dispatch('branchconversation', { id: newId });
+      }
     } else if (typeof conversationId === 'number' && message && typeof message.id !== 'undefined') {
-      branchConversation(String(conversationId), String(message.id));
+      const newId = await branchConversation(String(conversationId), String(message.id));
+      if (newId) {
+        dispatch('branchconversation', { id: newId });
+      }
     } else {
       console.error('Missing conversationId or message.id for branching');
     }
