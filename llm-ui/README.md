@@ -1,30 +1,34 @@
-# LLM UI - Modern Svelte + TypeScript + Vite Application
+# LLM UI
 
 [![GitHub license](https://img.shields.io/github/license/your-username/llm-ui)](https://github.com/your-username/llm-ui/blob/master/LICENSE)
 [![Vercel](https://vercelbadge.vercel.app/api/your-username/llm-ui)](https://llm-ui.vercel.app)
-[![Open in Codespace](https://github.com/codespaces/badge.svg)](https://github.com/codespaces/new?repo=your-username%2Fllm-ui)
+[![Open in Codespace](https://img.shields.io/badge/-Open%20in%20Codespace-181717?logo=github)](https://github.com/codespaces/new?repo=your-username%2Fllm-ui)
 
 ## Project Purpose
 
-A modern web application built with Svelte, TypeScript, and Vite, designed to provide a seamless user experience for interacting with LLM models. Perfect for developers looking to build AI-powered applications with a focus on performance and developer experience.
+A modern Svelte + TypeScript + Vite web UI for interacting with LLMs. Designed for developers and AI enthusiasts to quickly prototype, test, and deploy LLM-powered applications with a beautiful, fast, and extensible interface.
 
-## Tech Stack
+## Tech Stack Overview
 
-- **Frontend**: Svelte 4.x
-- **Language**: TypeScript
-- **Build Tool**: Vite
-- **IDE Support**: VS Code
-- **Deployment**: Vercel
+| Tech         | Purpose            | Link                                               |
+| ------------|------------------- |----------------------------------------------------|
+| Svelte 4.x  | UI Framework       | https://svelte.dev                                 |
+| TypeScript  | Language           | https://www.typescriptlang.org                     |
+| Vite        | Build Tool         | https://vitejs.dev                                 |
+| Dexie       | IndexedDB Wrapper  | https://dexie.org                                  |
+| VS Code     | IDE                | https://code.visualstudio.com                      |
+| Vercel      | Deployment         | https://vercel.com                                 |
 
 ## Key Features
 
-- Modern UI components with Svelte
-- TypeScript for type safety
-- Hot Module Replacement (HMR)
-- Production-ready build configuration
-- Easy deployment options
+- Modern, reactive UI with Svelte 4
+- TypeScript for safety and maintainability
+- Hot Module Replacement (HMR) for fast dev cycles
+- IndexedDB-based local storage (Dexie)
+- Easy deployment to Vercel
+- Ready for LLM API integration
 
-## System Overview
+## System Overview Diagram
 
 ```mermaid
 flowchart TD
@@ -37,31 +41,32 @@ flowchart TD
     style D fill:#ffddcc,stroke:#333333,color:#111111
 ```
 
-## Project Structure
+## Folder / File Guide
 
 ```
 llm-ui
 ├─ src/
 │  ├─ components/    # Reusable UI components
-│  ├─ lib/           # Utility functions
+│  ├─ lib/           # Utility functions & LLM API wrappers
 │  ├─ routes/        # Page components
 │  └─ App.svelte     # Main application component
-├─ public/
+├─ public/           # Static assets
 ├─ .gitignore
-├─ package.json
-├─ tsconfig.json
-└─ README.md
+├─ package.json      # Project metadata & scripts
+├─ tsconfig.json     # TypeScript config
+├─ README.md         # This file
 ```
 
-## Prerequisites
+## Prerequisites & Accounts
 
 - Node.js 18+ (LTS recommended)
 - npm 8+ or yarn
+- (Optional) LLM API keys (OpenAI, Anthropic, OpenRouter, etc.)
 - VS Code (recommended)
 
 ## Setup Options
 
-### Option A: Local Development
+### A. Local Development
 
 ```bash
 # Clone the repository
@@ -71,18 +76,39 @@ cd llm-ui
 # Install dependencies
 npm install
 
+# Copy env example and set API keys
+cp .env.example .env
+# (edit .env to add your keys)
+
 # Start development server
 npm run dev
 ```
 
-### Option B: Dev Container
+### B. Dev Container (VS Code)
 
 1. Install Docker Desktop
-2. Open in VS Code
-3. Press F1 and select "Dev Containers: Reopen in Container"
+2. Open the folder in VS Code
+3. Press F1 → "Dev Containers: Reopen in Container"
 4. The container will build and start automatically
 
-## Running the Application
+Or use the “Open in Codespace” badge for a one-click cloud dev environment.
+
+## Setup Flowchart Diagram
+
+```mermaid
+flowchart TD
+    A[Clone] --> B{Choose Setup}
+    B -->|Local| C[Install deps & .env]
+    C --> D[Run dev server]
+    B -->|Dev-Container| E[Reopen in Container]
+    E --> D
+    style B fill:#fffacd,stroke:#333333,color:#111111
+    style C fill:#cceeff,stroke:#333333,color:#111111
+    style E fill:#ffddcc,stroke:#333333,color:#111111
+    style D fill:#bbf7d0,stroke:#333333,color:#111111
+```
+
+## Running / Quick Commands
 
 ```bash
 # Development mode
@@ -95,36 +121,46 @@ npm run build
 npm run preview
 ```
 
-## Configuration
+## Configuration & API Keys 🔑
 
-The project uses environment variables for configuration. Create a `.env` file in the root directory:
+- Copy `.env.example` → `.env` and fill in your LLM API keys as needed.
+- Example keys:
+  - OPENAI_API_KEY
+  - ANTHROPIC_API_KEY
+  - OPENROUTER_API_KEY
+- **Do not commit `.env`**; it is gitignored.
 
-```bash
-cp .env.example .env
-```
+## Troubleshooting / FAQ
 
-## Troubleshooting
-
-- **HMR Issues**: Ensure you're using the latest version of Node.js and Vite
-- **TypeScript Errors**: Check your `tsconfig.json` and ensure all dependencies are installed
-- **Build Errors**: Clear your `node_modules` and reinstall dependencies
+| Symptom                   | Cause                   | Fix                                        |
+|---------------------------|-------------------------|---------------------------------------------|
+| HMR not working           | Outdated deps           | Upgrade Node.js, Vite, Svelte               |
+| TypeScript errors         | TS config or deps       | Check `tsconfig.json`, reinstall node mods  |
+| Build errors              | Corrupt deps            | Delete `node_modules`, reinstall            |
+| API errors                | Missing/invalid API key | Check `.env` and API provider dashboard     |
 
 ## Status & Roadmap
 
-- [x] Initial setup with Svelte + TypeScript + Vite
-- [x] Basic component structure
-- [ ] LLM integration
-- [ ] Advanced features
+- [x] Svelte + TypeScript + Vite setup
+- [x] Basic UI component structure
+- [ ] LLM API integration
+- [ ] Advanced prompt features
 - [ ] Documentation completion
 
-## License
+## How AI Helped
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+- Copilot and GPT-4 assisted with component scaffolding and API integration patterns.
 
-## Support
+## License & Attribution
 
-For support, please:
+MIT License – see [LICENSE](LICENSE).
 
-1. Open an issue on GitHub
-2. Join our Discord community
-3. Check the project documentation
+## Community Support / Feedback
+
+- Open an issue on GitHub
+- PRs welcome (docs, tests, features)
+- New to coding? Tag your issue with **`beginner-help`** and we’ll mentor you.
+
+---
+
+*Happy hacking – may your tokens be ever cheaper!* 🎉
